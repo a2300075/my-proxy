@@ -10,6 +10,7 @@ INDEX_HTML = '''
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="utf-8">
     <title>マイ・専用プロキシサーバー</title>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; padding-top: 50px; background-color: #f0f2f5; }
@@ -28,6 +29,7 @@ INDEX_HTML = '''
 </html>
 '''
 
+# ここがトップページの命令！INDEX_HTMLを絶対に返すようにしたよ！
 @app.route('/')
 def index():
     return INDEX_HTML
@@ -42,15 +44,12 @@ def go():
         target_url = 'https://' + target_url
 
     try:
-        # プロキシサーバーが代わりにサイトへアクセスして中身をダウンロード
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
         res = requests.get(target_url, headers=headers, timeout=10)
         
-        # もし画像やCSSなら、そのままブラウザに流す
         if 'text/html' not in res.headers.get('Content-Type', ''):
             return Response(res.content, content_type=res.headers.get('Content-Type'))
 
-        # 魔法の処理：URLの書き換え
         soup = BeautifulSoup(res.text, 'html.parser')
         
         for tag in soup.find_all(['a', 'img', 'link', 'script']):
@@ -68,4 +67,5 @@ def go():
         return f"<h3>❌ アクセスエラーが発生しました: {e}</h3>"
 
 if __name__ == '__main__':
+    # ポート10000番で起動
     app.run(host='0.0.0.0', port=10000)
