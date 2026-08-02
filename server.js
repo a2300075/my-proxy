@@ -33,16 +33,24 @@ app.use('/proxy', (req, res, next) => {
     let targetUrl = req.query.url;
     if (!targetUrl) return res.send('URLを入力してください');
 
-    // ★ここに魔法の2行を追加！httpから始まってない場合は自動で補完するよ！★
+    // httpから始まってない場合は自動で補完する
     if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
         targetUrl = 'https://' + targetUrl;
     }
 
+    // 正しい形で行き先をセットし直す魔法の修正
     const proxy = createProxyMiddleware({
         target: targetUrl,
         changeOrigin: true,
         pathRewrite: { '^/proxy': '' },
-        router: () => targetUrl, // 補完した新しいURLを行き先に指定
+        router: function(req) {
+            // リクエストごとに自動補完されたURLを正しく返すように修正！
+            let u = req.query.url;
+            if (!u.startsWith('http://') && !u.startsWith('https://')) {
+                u = 'https://' + u;
+            }
+            return u;
+        },
         ssl: { rejectUnauthorized: false },
         onProxyRes: function (proxyRes, req, res) {
             delete proxyRes.headers['x-frame-options'];
