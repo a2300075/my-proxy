@@ -1,11 +1,11 @@
-from flask import Flask, request, render_template_string, Response
+from flask import Flask, request, Response
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin
 
 app = Flask(__name__)
 
-# 1. 最初に表示されるURLの入力画面（HTML）
+# 最初に表示されるURLの入力画面
 INDEX_HTML = '''
 <!DOCTYPE html>
 <html>
@@ -30,33 +30,33 @@ INDEX_HTML = '''
 
 @app.route('/')
 def index():
-    return render_template_string(INDEX_HTML)
+    return INDEX_HTML
 
 @app.route('/go')
 def go():
     target_url = request.args.get('url')
+    if not target_url:
+        return "URLを入力してください"
+        
     if not target_url.startswith('http'):
         target_url = 'https://' + target_url
 
     try:
-        # 2. プロキシサーバーが代わりにサイトへアクセスして中身をダウンロード
+        # プロキシサーバーが代わりにサイトへアクセスして中身をダウンロード
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
         res = requests.get(target_url, headers=headers, timeout=10)
         
-        # もし画像やCSS（デザインファイル）なら、そのままブラウザに流す
+        # もし画像やCSSなら、そのままブラウザに流す
         if 'text/html' not in res.headers.get('Content-Type', ''):
             return Response(res.content, content_type=res.headers.get('Content-Type'))
 
-        # 3. 魔法の処理：ダウンロードしたHTMLの中にある画像やリンクのURLを、全部このプロキシ経由に書き換える！
+        # 魔法の処理：URLの書き換え
         soup = BeautifulSoup(res.text, 'html.parser')
         
-        # リンク（aタグ）や画像（imgタグ）のURLを書き換えるループ処理
         for tag in soup.find_all(['a', 'img', 'link', 'script']):
             attr = 'src' if tag.name in ['img', 'script'] else 'href'
             if tag.has_attr(attr):
-                # 元のURLを絶対パスに変換
                 abs_url = urljoin(target_url, tag[attr])
-                # このプロキシサーバー（/go?url=...）を通るようにURLを書き換える！
                 if tag.name == 'a':
                     tag[attr] = f"/go?url={abs_url}"
                 else:
@@ -64,9 +64,8 @@ def go():
 
         return str(soup)
 
-except Exception as e:
-    return f"<h3>❌ アクセスエラーが発生しました: {e}</h3>"
+    except Exception as e:
+        return f"<h3>❌ アクセスエラーが発生しました: {e}</h3>"
 
 if __name__ == '__main__':
-    # サーバーを起動（ポート5000番で待機）
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=10000)
