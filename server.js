@@ -20,7 +20,7 @@ app.get('/', (req, res) => {
             <h2>🔥 大進化・完全無敵プロキシ 🔥</h2>
             <p>Google検索も動画も、URLを入力して突撃！</p>
             <form action="/proxy" method="get">
-                <input type="text" name="url" placeholder="https://google.com" required>
+                <input type="text" name="url" placeholder="google.com" required>
                 <button type="submit">無敵突撃！</button>
             </form>
         </body>
@@ -28,19 +28,23 @@ app.get('/', (req, res) => {
     `);
 });
 
-// すべてのJavaScriptや検索の動きを「身代わり」になって中継する魔法の処理
+// 通信を中継する処理
 app.use('/proxy', (req, res, next) => {
-    const targetUrl = req.query.url;
+    let targetUrl = req.query.url;
     if (!targetUrl) return res.send('URLを入力してください');
+
+    // ★ここに魔法の2行を追加！httpから始まってない場合は自動で補完するよ！★
+    if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+        targetUrl = 'https://' + targetUrl;
+    }
 
     const proxy = createProxyMiddleware({
         target: targetUrl,
         changeOrigin: true,
         pathRewrite: { '^/proxy': '' },
-        router: (req) => req.query.url,
+        router: () => targetUrl, // 補完した新しいURLを行き先に指定
         ssl: { rejectUnauthorized: false },
         onProxyRes: function (proxyRes, req, res) {
-            // サイトから返ってきたクッキーやデータをChromebookに安全に渡す
             delete proxyRes.headers['x-frame-options'];
             delete proxyRes.headers['content-security-policy'];
         }
